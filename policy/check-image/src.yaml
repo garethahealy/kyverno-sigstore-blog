@@ -1,0 +1,23 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: check-image
+  annotations:
+    policies.kyverno.io/owner: Red Hat CoP
+    policies.kyverno.io/category: Workload Management
+    policies.kyverno.io/description: Check pod is using signed image
+spec:
+  validationFailureAction: enforce
+  background: false
+  rules:
+    - name: check-image-signed
+      match:
+        resources:
+          kinds:
+            - Pod
+      verifyImages:
+        - image: ghcr.io/garethahealy/kyverno-signed:*
+          key: replaceme
+        - image: ghcr.io/garethahealy/kyverno-unsigned:*
+          key: replaceme
+            

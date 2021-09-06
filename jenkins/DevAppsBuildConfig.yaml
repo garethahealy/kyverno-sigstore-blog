@@ -1,0 +1,63 @@
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: kyverno-signed
+spec: {}
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: signed-docker-build
+  namespace: jenkins
+  labels:
+    name: docker-build
+spec:
+  source:
+    type: Git
+    contextDir: 'policy/check-image/test_data/unit/signed'
+    git:
+      uri: 'https://github.com/garethahealy/kyverno-verifyimages-blog.git'
+      ref: 'master'
+  strategy:
+    type: Docker
+    dockerStrategy:
+      from:
+        kind: ImageStreamTag
+        name: 'ubi-micro:8.4'
+        namespace: jenkins
+  output:
+    to:
+      kind: ImageStreamTag
+      name: 'kyverno-signed:latest'
+---
+apiVersion: image.openshift.io/v1
+kind: ImageStream
+metadata:
+  name: kyverno-unsigned
+spec: {}
+---
+apiVersion: build.openshift.io/v1
+kind: BuildConfig
+metadata:
+  name: unsigned-docker-build
+  namespace: jenkins
+  labels:
+    name: docker-build
+spec:
+  source:
+    type: Git
+    contextDir: 'policy/check-image/test_data/unit/unsigned'
+    git:
+      uri: 'https://github.com/garethahealy/kyverno-verifyimages-blog.git'
+      ref: 'master'
+  strategy:
+    type: Docker
+    dockerStrategy:
+      from:
+        kind: ImageStreamTag
+        name: 'ubi-micro:8.4'
+        namespace: jenkins
+  output:
+    to:
+      kind: ImageStreamTag
+      name: 'kyverno-unsigned:latest'

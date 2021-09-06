@@ -1,0 +1,35 @@
+node ("jenkins-agent-cosign") {
+    stage("Clone blog") {
+        sh "git clone https://github.com/garethahealy/kyverno-verifyimages-blog.git"
+    }
+
+    stage("Build our images") {
+        dir("kyverno-verifyimages-blog") {
+            sh "oc import-image registry.access.redhat.com/ubi8/ubi-micro:8.4 --confirm"
+            sh "oc apply -f jenkins/DevAppsBuildConfig.yaml"
+
+            sh "oc start-build unsigned-docker-build -w"
+            sh "oc start-build signed-docker-build -w"
+        }
+    }
+
+    stage("Sign our built image") {
+        dir("kyverno-verifyimages-blog") {
+            sh "oc registry login"
+
+            // NOTE: COSIGN_DOCKER_MEDIA_TYPES=1 is required for OCP < 4.7
+            sh "cosign sign -key k8s://jenkins/cosign \$(oc registry info)/jenkins/kyverno-signed:latest"
+        }
+    }
+
+    stage("Deploy resources") {
+        dir("kyverno-verifyimages-blog") {
+            echo "Let's first tweak the test data to match our OCP env..."
+            sh """yq --yaml-output --in-place --arg GHCR_USERNAME "jenkins" --arg REGISTRY_URL "\$(oc registry info)" '.items[0].spec.template.spec.containers[0].image |= (\$REGISTRY_URL + "/" + \$GHCR_USERNAME + "/kyverno-signed:latest")' policy/check-image/test_data/unit/accept.yml"""
+            sh """yq --yaml-output --in-place --arg GHCR_USERNAME "jenkins" --arg REGISTRY_URL "\$(oc registry info)" '.items[0].spec.template.spec.containers[0].image |= (\$REGISTRY_URL + "/" + \$GHCR_USERNAME + "/kyverno-unsigned:latest")' policy/check-image/test_data/unit/reject.yml"""
+
+            sh "oc create -f policy/check-image/test_data/unit/accept.yml --dry-run=server"
+            sh "oc create -f policy/check-image/test_data/unit/reject.yml --dry-run=server"
+        }
+    }
+}

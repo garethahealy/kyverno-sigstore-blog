@@ -1,0 +1,70 @@
+name: Run tests
+
+on: [push, pull_request]
+
+jobs:
+  tests:
+    env:
+      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      GHCR_USERNAME: garethahealy
+      REGISTRY_URL: ghcr.io
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Install cosign
+        uses: sigstore/cosign-installer@main
+
+      - name: Install oc
+        uses: redhat-actions/openshift-tools-installer@v1
+        with:
+          oc: "4"
+
+      - name: Install kyverno
+        uses: garethahealy/github-actions/kyverno-cli@kyverno
+        with:
+          raw: kyverno version
+
+      - name: Create k8s Kind Cluster
+        uses: helm/kind-action@v1.2.0
+
+      - name: Log in to the Container registry
+        uses: docker/login-action@v1
+        with:
+          registry: ${{ env.REGISTRY_URL }}
+          username: ${{ env.GHCR_USERNAME }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and sign image
+        run: |
+          test/build-and-sign.sh
+
+      - name: Test against KinD
+        run: |
+          kyvernocli=$(docker images --filter=label=com.github.actions.name=kyverno-cli --format "{{.Repository}}:{{.Tag}}")
+          docker run --rm --network host --workdir /kyvernocli --env GHCR_USERNAME=${GHCR_USERNAME} --env GHCR_TOKEN=${GHCR_TOKEN} --env REGISTRY_URL=${REGISTRY_URL} --volume "/home/runner/.kube/":"/root/.kube/" --volume "/home/runner/work/kyverno-verifyimages-blog/kyverno-verifyimages-blog":"/kyvernocli" --entrypoint .github/workflows/tests-entrypoint.sh ${kyvernocli}
+
+      - name: Get pods and events if tests failed
+        if: ${{ failure() }}
+        run: |
+          kubectl get nodes
+          kubectl get namespaces
+          kubectl get pods --all-namespaces
+          kubectl get events --all-namespaces
+
+      - name: Build jenkins agent
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: jenkins-agent-cosign
+          context: ./jenkins
+          dockerfiles: |
+            ./jenkins/Dockerfile
+
+      - name: Build kyvero base
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: kyverno
+          context: ./kyverno
+          dockerfiles: |
+            ./kyverno/Dockerfile

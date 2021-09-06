@@ -1,0 +1,19 @@
+node ("jenkins-agent-cosign") {
+    stage("Clone blog") {
+        sh "git clone https://github.com/garethahealy/kyverno-verifyimages-blog.git"
+    }
+
+    stage("Deploy ClusterPolicy") {
+        dir("kyverno-verifyimages-blog") {
+            echo "Let's first tweak the test data to match our OCP env..."
+            sh "oc registry login"
+            sh """yq --yaml-output --in-place --arg GHCR_USERNAME "jenkins" --arg REGISTRY_URL "\$(oc registry info)" '.spec.rules[].verifyImages[0].image |= (\$REGISTRY_URL + "/" + \$GHCR_USERNAME + "/kyverno-signed:latest")' policy/check-image/src.yaml"""
+            sh """yq --yaml-output --in-place --arg GHCR_USERNAME "jenkins" --arg REGISTRY_URL "\$(oc registry info)" '.spec.rules[].verifyImages[1].image |= (\$REGISTRY_URL + "/" + \$GHCR_USERNAME + "/kyverno-unsigned:latest")' policy/check-image/src.yaml"""
+
+            sh "cosign generate-key-pair k8s://jenkins/cosign"
+
+            sh "oc delete clusterpolicy --all"
+            sh "test/deploy-kyverno.sh deploy_policy"
+        }
+    }
+}
