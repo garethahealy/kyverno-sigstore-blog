@@ -3,14 +3,14 @@
 [![Run tests](https://github.com/garethahealy/kyverno-verifyimages-blog/actions/workflows/tests.yaml/badge.svg)](https://github.com/garethahealy/kyverno-verifyimages-blog/actions/workflows/tests.yaml)
 
 # Software Supply Chain Security on OpenShift with Kyverno and Cosign
-In a previous [blog post](https://github.com/garethahealy/kyverno-validate-blog),
+In a previous [blog post](https://cloud.redhat.com/blog/automate-your-security-practices-and-policies-on-openshift-with-kyverno),
 I discussed the Kyverno policy engine and how it could be used to validate your Kubernetes resources by left-shifting your security and policy enforcement.
 
 Another feature that Kyverno offers, which at the time of writing is alpha, is [image verification](https://kyverno.io/docs/writing-policies/verify-images/) that
 uses the `cosign` component from the [sigstore](https://github.com/sigstore) project.
 
 The aim of this blog post is not to explain what Kyverno or Cosign are but how they can be used together on OpenShift to
-provide image verification. If you are new to Kyverno, I would suggest reading my previous [blog post](https://github.com/garethahealy/kyverno-validate-blog)
+provide image verification. If you are new to Kyverno, I would suggest reading my previous [blog post](https://cloud.redhat.com/blog/automate-your-security-practices-and-policies-on-openshift-with-kyverno)
 and if you are new to the sigstore project, give this [blog post](https://www.redhat.com/en/blog/sigstore-open-answer-software-supply-chain-trust-and-security) 
 a read and this [press release](https://www.linuxfoundation.org/en/press-release/linux-foundation-announces-free-sigstore-signing-service-to-confirm-origin-and-authenticity-of-software/).
 
